@@ -1,0 +1,128 @@
+using System;
+using System.IO;
+using System.Configuration;
+using System.Runtime.InteropServices;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Office.Interop.Outlook;
+using Microsoft.Office.Core;
+using System.Net;
+using System.Net.Mail;
+using System.Reflection;
+
+namespace SQL_TO_CSV_CS
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+
+            if (args.Length == 1 && args[0] == "/?")
+            {
+                Console.Write("Usage:SQL_TO_CSV \"<server>\" \"<sql>\" \"<output path>\" \n" +
+                              "[email_address] [email_subject] [email_body]");
+            }
+            else if (args.Length == 3)
+            {
+                sqlToCsv(args[0],args[1],args[2]);
+            }
+            else if (args.Length == 6)
+            {
+                sqlToCsv(args[0], args[1], args[2]);
+                mailFile(args[3], args[4], args[5], args[2]);
+            } else
+            {
+                Console.Write("\"Type SQL_TO_CSV /?\" for help");
+            }
+            
+            
+        }
+
+        static void mailFile(string address,string subject, string body,string attachement )
+        {
+
+            try
+            {         
+            
+            // NB May fail from Debug if VS runing as elevated/different user
+            Microsoft.Office.Interop.Outlook.Application olApp = 
+                Marshal.GetActiveObject("Outlook.Application") as Microsoft.Office.Interop.Outlook.Application;
+
+            Microsoft.Office.Interop.Outlook.MailItem em = olApp.CreateItem(OlItemType.olMailItem);
+            em.Subject = subject;
+            em.To = address;
+            em.Body = body;
+            em.Attachments.Add(attachement);            
+            em.Send();
+
+                /*
+                // Open Outlook and email (fails id already open 1 instance only allowed)
+                // Test with >>>> if (Process.GetProcessesByName("OUTLOOK").Count() > 0) 
+                Microsoft.Office.Interop.Outlook.Application app = new Microsoft.Office.Interop.Outlook.Application();
+                Microsoft.Office.Interop.Outlook.MailItem mailItem = app.CreateItem(Microsoft.Office.Interop.Outlook.OlItemType.olMailItem);
+                mailItem.Subject = "<YOUR_DATA>";
+                mailItem.To = "<YOUR_DATA>";
+                mailItem.Body = "<YOUR_DATA>";
+                mailItem.Attachments.Add(@"<YOUR_DATA>");
+                mailItem.Send();
+                app.Quit();
+                */
+            }
+            catch (System.Exception)
+            {
+                Console.Write("Error Creating Email is outlook open and your parameters correct?");
+                
+            }
+
+
+        }
+
+        static void sqlToCsv(string Server,String sql,String outPath)
+        {
+
+            try { 
+
+            string line = "";
+            string delim = "";
+
+            System.IO.StreamWriter oF = new System.IO.StreamWriter(outPath);
+
+            System.Data.SqlClient.SqlConnection con = new System.Data.SqlClient.SqlConnection();
+            con.ConnectionString = "Data Source="+Server+";Initial Catalog=<YOUR_DB_NAME>;Integrated Security=SSPI;";
+            con.Open();
+            System.Data.SqlClient.SqlCommand cmd = con.CreateCommand();
+            cmd.CommandText = sql;
+            System.Data.SqlClient.SqlDataReader dr = cmd.ExecuteReader();
+
+            for (int i = 0; i < dr.FieldCount; i++)
+            {
+                if (i == 0) { delim = ""; } else { delim = ","; }
+                line += delim + dr.GetName(i);
+            }
+            oF.WriteLine(line);
+            line = "";
+
+
+            while (dr.Read())
+            {
+                for (int i = 0; i < dr.FieldCount;i++) {
+                    if (i == 0) { delim = ""; } else { delim = ","; }
+                    line += delim + dr.GetValue(i).ToString().Trim().Replace(",","");
+                }
+                oF.WriteLine(line);     
+                line = "";
+            }
+            con.Close();
+            oF.Close();
+            }
+            catch (System.Exception)
+            {
+                Console.Write("Server, SQL or outPath error");
+            }
+        }
+
+
+    }
+}
