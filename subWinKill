@@ -1,0 +1,103 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Runtime.InteropServices;
+
+using System.Windows.Automation;
+
+namespace SubWinKill
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            if (args.Count() == 0)
+            {
+                Console.Write(TestFunc());
+            }
+            else
+            {
+                Console.Write(
+                    "Usage\n" +
+                    " : save <Part Of Top Window Title> in a file called \"winKillMainParam.txt\"\n" +
+                    " : save <Part Of Sub Window Title> in a file called \"winKillSecondParam.txt\"\n" +
+                    "   now run SubWinKill.exe in the command line.\n" +
+                    "   NB Case sensitive");
+            }
+        }
+
+        static string TestFunc()
+        {
+            string z = "";
+            int n = 0;
+            bool mainFound = false;
+            bool subFound = false;
+            string MainWindowSearchString = "";
+            string MatchRequest = "";
+
+            MainWindowSearchString = "";
+            MatchRequest = "";
+            ///*
+            if (System.IO.File.Exists("winKillMainParam.txt"))
+            {
+                MainWindowSearchString = System.IO.File.ReadAllText("winKillMainParam.txt");
+            }
+            else
+            {
+                return "No file winKillMainParam.txt";
+            }
+            if (System.IO.File.Exists("winKillSecondParam.txt"))
+            {
+                MatchRequest = System.IO.File.ReadAllText("winKillSecondParam.txt");
+            }
+            else
+            {
+                return "No file winKillSecondParam.txt";
+            }
+            //*/
+            AutomationElement x = AutomationElement.RootElement;
+            AutomationElementCollection y = x.FindAll(System.Windows.Automation.TreeScope.Children, Condition.TrueCondition);
+            for (n = 0; n < y.Count; n++)
+            {
+                z = y[n].Current.Name;
+                if (z.Contains(MainWindowSearchString))
+                {
+                    mainFound = true;
+                    break;
+                }
+            }
+            if (mainFound)
+            {
+                AutomationElementCollection a = y[n].FindAll(TreeScope.Subtree, Condition.TrueCondition);
+
+                string w = "";
+
+                for (n = 0; n < a.Count; n++)
+                {
+                    w = a[n].Current.Name;
+                    if (w.Contains(MatchRequest))
+                    {
+                        subFound = true;
+                        break;
+                    }
+                }
+                if (subFound)
+                {
+                    System.Windows.Automation.AutomationElement AE = a[n];
+                    WindowPattern wp = AE.GetCurrentPattern(WindowPattern.Pattern) as WindowPattern;
+                    wp.Close();
+                    return "Matched As App [" + z + "] Window [" + w + "]";
+                }
+                else
+                {
+                    return "NOT FOUND SECOND";
+                }
+            }
+
+            return "NOT FOUND MAIN";
+        }
+    }
+}
